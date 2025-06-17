@@ -194,7 +194,6 @@ Token* lexer_init(const char* input) {
         // Handle immediate values (decimal and hexadecimal)
         if (isdigit(*p) || *p == '-') {
             const char* start = p;
-            bool is_hex = false;
             int value = 0;
 
             if (*p == '-') {
@@ -204,7 +203,6 @@ Token* lexer_init(const char* input) {
 
             // Check for hexadecimal format (0x...)
             if (*p == '0' && (*(p + 1) == 'x' || *(p + 1) == 'X')) {
-                is_hex = true;
                 p += 2;  // Skip '0x'
                 column += 2;
                 start = p;  // Reset start to after '0x'
