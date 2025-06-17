@@ -1,0 +1,90 @@
+add <rd>,<rs1>,<rs2>:
+[15:12] = 0000 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+sub <rd>,<rs1>,<rs2>:
+[15:12] = 0001 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+mul <rd>,<rs1>,<rs2>:
+[15:12] = 0010 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+div <rd>,<rs1>,<rs2>:
+[15:12] = 0011 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+jalr <rd>,<rs1>,<rs2>:
+[15:12] = 0100 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+sw <rs>,<ra>:
+[15:12] = 0101 (opcode)
+[11:8] = 0000 (unused)
+[7] = 0 (unused)
+[6:4] = ra
+[3] = 0 (unused)
+[2:0] = rs
+
+lw <rd>,<ra>:
+[15:12] = 0110 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = ra
+[3:0] = 0000 (unused)
+
+lhi <rd>,<imm8>:
+[15:12] = 1000 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8
+
+lli <rd>,<imm8>:
+[15:12] = 1001 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8
+
+bne <rd>,<imm8>:
+[15:12] = 1101 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8
+
+beq <rd>,<imm8>:
+[15:12] = 1110 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8
+
+blt <rd>,<imm8>:
+[15:12] = 1111 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8

@@ -1,0 +1,132 @@
+beag has 16-bit architecture with 16-bit ALU that performs signed integer operations, and eight 16-bit registers r0-r7 where r0 is hardwired to 0. Memory has 16-bit wide address and 16-bits wide data busses. Each instruction encoding is exactly 16-bits and fits into a single memory location. Program counter (PC) is a 16-bit register and is incremented by 1 for all instructions except branching instructions. The list of instructions is given below. First line of each paragraph is the instruction mnemonic followed by the description of what ir is doing on the following line:
+
+mul <reg>, <regs1>,<regs2> 
+Multiply the contents of registers <regs1> and <regs2> and put the result into the register <reg>
+
+lli <reg>,<value> 
+Load the 8-bit immediate constant <value> sign-extended to 16 bits into the register <reg>
+
+lhi <reg>,<value> 
+Load the 8-bit immedite <value> into 8 most significant bits of the register <reg>
+
+div <reg>, <regs1>,<regs2>
+Divide the contents of registers <regs1> by <regs2> and put the result into the register <reg>
+
+lw <reg>,<rega> 
+Load the 16-bit data word stored in memory at the address contained in register <rega> into the register <reg>
+
+beq <reg>,<offset> 
+If <reg> value is equal to 0, update program counter by adding 8-bit signed immediate constant <offset> to it, otherwise proceed to the next instruction by incrementing PC=PC+1
+
+sw <reg>, <rega> 
+Store the data in register <reg> to the memory address contained in register <rega>
+
+bne <reg>,<offset> 
+Like beq, but check <reg> for being not equal to zero.
+
+add <reg>, <regs1>,<regs2>
+Add the contents of registers <regs1> and <regs2> and put the result into the register  <reg>
+
+blt <reg>,<offset> 
+Like beq, but check register <reg> for being less than zero.
+
+sub <reg>, <regs1>,<regs2>
+Subtract the contents of register <regs2> from the content of register <regs1> and put the result into the register <reg>
+
+jalr <reg>, <regs1>, <regs2>
+Set the value of program counter PC to the address equal to the sum of contents of registers <regs1> and <regs2>, and save the old value of program counter to the register <reg>. The purpose of this instruction is similar to jalr instruction in risc-v isa.
+
+Remember that all immediate constants are 8-bit signed integers and that all CPU registers are 16-bits wide, all arithmetic operations consume and produce 16-bit signed integers too.
+
+The following is the encoding of the instructions:
+
+add <rd>,<rs1>,<rs2>:
+[15:12] = 0000 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+sub <rd>,<rs1>,<rs2>:
+[15:12] = 0001 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+mul <rd>,<rs1>,<rs2>:
+[15:12] = 0010 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+div <rd>,<rs1>,<rs2>:
+[15:12] = 0011 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+jalr <rd>,<rs1>,<rs2>:
+[15:12] = 0100 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = rs1
+[3] = 0 (unused)
+[2:0] = rs2
+
+sw <rs>,<ra>:
+[15:12] = 0101 (opcode)
+[11:8] = 0000 (unused)
+[7] = 0 (unused)
+[6:4] = ra
+[3] = 0 (unused)
+[2:0] = rs
+
+lw <rd>,<ra>:
+[15:12] = 0110 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7] = 0 (unused)
+[6:4] = ra
+[3:0] = 0000 (unused)
+
+lhi <rd>,<imm8>:
+[15:12] = 1000 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8
+
+lli <rd>,<imm8>:
+[15:12] = 1001 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8
+
+bne <rd>,<imm8>:
+[15:12] = 1101 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8
+
+beq <rd>,<imm8>:
+[15:12] = 1110 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8
+
+blt <rd>,<imm8>:
+[15:12] = 1111 (opcode)
+[11] = 0 (unused)
+[10:8] = rd
+[7:0] = imm8
