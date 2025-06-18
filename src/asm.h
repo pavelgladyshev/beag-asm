@@ -13,6 +13,7 @@ typedef enum {
     TOKEN_LABEL,           // Label definition (ends with ':')
     TOKEN_LABEL_REFERENCE, // Label reference (used in branch instructions)
     TOKEN_COMMA,
+    TOKEN_WORD_DIRECTIVE,  // .word directive
     TOKEN_EOF,
     TOKEN_ERROR
 } TokenType;
@@ -39,6 +40,7 @@ typedef enum {
     INST_BNE,    // 1101
     INST_BEQ,    // 1110
     INST_BLT,    // 1111
+    INST_WORD,   // Word directive
     INST_EOP     // End of program marker
 } InstructionType;
 
@@ -54,7 +56,7 @@ typedef struct {
     OperandType type;
     union {
         uint8_t reg_num;    // 3-bit register number (0-7)
-        int8_t immediate;   // 8-bit signed immediate
+        int immediate;      // 16-bit (or more) immediate for .word
         char* label;        // Label name for branch targets
     } value;
 } Operand;

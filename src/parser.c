@@ -58,6 +58,7 @@ static void parse_immediate(Operand* operand) {
     }
     operand->type = OP_IMMEDIATE;
     operand->value.immediate = atoi(current_token->value);
+    printf("'%s' Immediate parsed: %d\n", current_token->value, operand->value.immediate);
     advance();
 }
 
@@ -123,6 +124,29 @@ static void parse_label_definition(void) {
     advance();
 }
 
+static void parse_word_directive(void) {
+    if (current_token->type != TOKEN_WORD_DIRECTIVE) {
+        parse_error("Expected .word directive");
+        return;
+    }
+
+    Instruction* inst = &instructions[instruction_count++];
+    inst->type = INST_WORD;
+    inst->line = current_token->line;
+    advance();
+
+    // Parse the word value (number or label)
+    if (current_token->type == TOKEN_IMMEDIATE) {
+        parse_immediate(&inst->operands[0]);
+        inst->operand_count = 1;
+    } else if (current_token->type == TOKEN_LABEL_REFERENCE) {
+        parse_label(&inst->operands[0]);
+        inst->operand_count = 1;
+    } else {
+        parse_error("Expected number or label after .word");
+    }
+}
+
 Instruction* parser_parse(Token* tokens) {
     instructions = malloc(sizeof(Instruction) * MAX_INSTRUCTIONS);
     if (!instructions) return NULL;
@@ -135,6 +159,8 @@ Instruction* parser_parse(Token* tokens) {
             parse_label_definition();
         } else if (current_token->type == TOKEN_INSTRUCTION) {
             parse_instruction();
+        } else if (current_token->type == TOKEN_WORD_DIRECTIVE) {
+            parse_word_directive();
         } else {
             parse_error("Unexpected token");
             break;
@@ -186,7 +212,8 @@ void debug_print_instructions(Instruction* instructions) {
                inst->type == INST_LLI ? "lli" :
                inst->type == INST_BNE ? "bne" :
                inst->type == INST_BEQ ? "beq" :
-               inst->type == INST_BLT ? "blt" : "???");
+               inst->type == INST_BLT ? "blt" :
+               inst->type == INST_WORD ? ".word" : "???");
 
         // Print operands
         for (int j = 0; j < inst->operand_count; j++) {
@@ -196,9 +223,9 @@ void debug_print_instructions(Instruction* instructions) {
                     printf("r%d", inst->operands[j].value.reg_num);
                     break;
                 case OP_IMMEDIATE:
-                    printf("%d (0x%02X)", 
+                    printf("%d (0x%04X)", 
                            inst->operands[j].value.immediate,
-                           (uint8_t)inst->operands[j].value.immediate);
+                           (int16_t)inst->operands[j].value.immediate);
                     break;
                 case OP_LABEL:
                     printf("%s", inst->operands[j].value.label);
@@ -208,6 +235,7 @@ void debug_print_instructions(Instruction* instructions) {
 
         // Print instruction format type
         printf(" [%s] (line %d)\n",
+               inst->type == INST_WORD ? "Word" :
                inst->type <= INST_DIV ? "R-type" :
                inst->type <= INST_LW ? "M-type" : "I-type",
                inst->line);

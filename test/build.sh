@@ -6,7 +6,7 @@ make
 cd test
 
 # Assemble the test programs and print their binary output
-for asm in factorial.asm memory.asm test.asm; do
+for asm in factorial.asm memory.asm test.asm word.asm; do
     bin_file="${asm%.asm}.bin"
     echo "Assembling $asm -> $bin_file"
     ../bin/beag-asm "$asm" "$bin_file"

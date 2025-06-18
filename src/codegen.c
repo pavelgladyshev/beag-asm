@@ -95,6 +95,21 @@ uint16_t* codegen_generate(Instruction* instructions, size_t* size) {
                             (inst->operands[1].value.immediate & 0xFF);       // imm8 [7:0]
                 break;
 
+            case INST_WORD:
+                if (inst->operands[0].type == OP_IMMEDIATE) {
+                    instruction = inst->operands[0].value.immediate & 0xFFFF;
+                } else if (inst->operands[0].type == OP_LABEL) {
+                    uint16_t target = symbol_table_get(inst->operands[0].value.label);
+                    if (target == 0xFFFF) {
+                        fprintf(stderr, "Error: Undefined label '%s' at line %d\n",
+                                inst->operands[0].value.label, inst->line);
+                        free(machine_code);
+                        return NULL;
+                    }
+                    instruction = target;
+                }
+                break;
+
             case INST_BNE:
             case INST_BEQ:
             case INST_BLT: {

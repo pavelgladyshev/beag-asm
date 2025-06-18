@@ -27,6 +27,7 @@ static const char* token_type_names[] = {
     "LABEL",
     "LABEL_REF",
     "COMMA",
+    "WORD_DIRECTIVE",
     "EOF",
     "ERROR"
 };
@@ -77,7 +78,7 @@ static int parse_hex(const char* str) {
         }
         str++;
     }
-    return value;
+    return value & 0xFFFF;  // Ensure 16-bit value
 }
 
 void debug_print_tokens(Token* tokens) {
@@ -165,9 +166,9 @@ Token* lexer_init(const char* input) {
         }
 
         // Handle identifiers and instructions
-        if (isalpha(*p) || *p == '_') {
+        if (isalpha(*p) || *p == '_' || *p == '.') {
             const char* start = p;
-            while (*p && (isalnum(*p) || *p == '_')) {
+            while (*p && (isalnum(*p) || *p == '_' || *p == '.')) {
                 p++;
                 column++;
             }
@@ -177,7 +178,9 @@ Token* lexer_init(const char* input) {
             ident[len] = '\0';
 
             TokenType type;
-            if (is_instruction(ident)) {
+            if (strcmp(ident, ".word") == 0) {
+                type = TOKEN_WORD_DIRECTIVE;
+            } else if (is_instruction(ident)) {
                 type = TOKEN_INSTRUCTION;
             } else if (is_register(ident)) {
                 type = TOKEN_REGISTER;
@@ -201,6 +204,7 @@ Token* lexer_init(const char* input) {
                 column++;
             }
 
+
             // Check for hexadecimal format (0x...)
             if (*p == '0' && (*(p + 1) == 'x' || *(p + 1) == 'X')) {
                 p += 2;  // Skip '0x'
@@ -212,7 +216,6 @@ Token* lexer_init(const char* input) {
                     p++;
                     column++;
                 }
-
                 int len = p - start;
                 if (len > 0) {
                     char* hex_str = malloc(len + 1);
@@ -234,6 +237,12 @@ Token* lexer_init(const char* input) {
                 value = atoi(num);
                 free(num);
             }
+
+            printf("Immediate parsed: %d\n", value);
+
+            // Clamp values
+            value = (value) & 0xFFFF;  // For hex, always unsigned
+
 
             // Convert the value to a string
             char value_str[32];
