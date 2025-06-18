@@ -5,26 +5,36 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-// Token types
+// Token types for the assembler
 typedef enum {
-    TOKEN_INSTRUCTION,
-    TOKEN_REGISTER,
-    TOKEN_IMMEDIATE,
+    // Basic tokens
+    TOKEN_INSTRUCTION,      // Assembly instruction (add, sub, etc.)
+    TOKEN_REGISTER,         // Register reference (r0-r7)
+    TOKEN_IMMEDIATE,        // Immediate value (number)
     TOKEN_LABEL,           // Label definition (ends with ':')
     TOKEN_LABEL_REFERENCE, // Label reference (used in branch instructions)
-    TOKEN_COMMA,
+    
+    // Label modifiers for high/low byte access
+    TOKEN_LABEL_HI,        // High 8 bits of label address (%hi)
+    TOKEN_LABEL_LO,        // Low 8 bits of label address (%lo)
+    
+    // Punctuation
+    TOKEN_COMMA,           // Comma separator
+    TOKEN_LPAREN,          // Left parenthesis
+    TOKEN_RPAREN,          // Right parenthesis
+    
+    // Directives
     TOKEN_WORD_DIRECTIVE,  // .word directive
-    TOKEN_EOF,
-    TOKEN_ERROR
+    TOKEN_ASCII_DIRECTIVE, // .ascii directive
+    TOKEN_ASCIZ_DIRECTIVE, // .asciz directive
+    
+    // Literals
+    TOKEN_STRING_LITERAL,  // String literal in quotes
+    
+    // Special tokens
+    TOKEN_EOF,             // End of file
+    TOKEN_ERROR            // Error token
 } TokenType;
-
-// Token structure
-typedef struct {
-    TokenType type;
-    char* value;
-    int line;
-    int column;
-} Token;
 
 // BEAG ISA Instruction types
 typedef enum {
@@ -41,8 +51,23 @@ typedef enum {
     INST_BEQ,    // 1110
     INST_BLT,    // 1111
     INST_WORD,   // Word directive
+    INST_ASCII,  // ASCII directive
+    INST_ASCIZ,  // ASCIZ directive (null-terminated)
     INST_EOP     // End of program marker
 } InstructionType;
+
+// Token structure for the assembler
+typedef struct {
+    TokenType type;        // Type of token
+    union {
+        char* str;         // For labels, label references, and string literals
+        uint8_t reg_num;   // For registers (0-7)
+        int16_t immediate; // For immediate values
+        InstructionType inst_type; // For instructions and directives
+    } value;
+    int line;             // Line number where token was found
+    int column;           // Column number where token was found
+} Token;
 
 // Operand types
 typedef enum {
@@ -78,6 +103,7 @@ typedef struct {
 
 // Function declarations
 Token* lexer_init(const char* input);
+InstructionType get_instruction_type(const char* name);
 void lexer_free(Token* tokens);
 Instruction* parser_parse(Token* tokens);
 void parser_free(Instruction* instructions);

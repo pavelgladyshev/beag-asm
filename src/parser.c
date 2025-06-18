@@ -25,7 +25,7 @@ static bool match(TokenType type) {
     return false;
 }
 
-static InstructionType get_instruction_type(const char* name) {
+InstructionType get_instruction_type(const char* name) {
     if (strcmp(name, "add") == 0) return INST_ADD;
     if (strcmp(name, "sub") == 0) return INST_SUB;
     if (strcmp(name, "mul") == 0) return INST_MUL;
@@ -38,6 +38,7 @@ static InstructionType get_instruction_type(const char* name) {
     if (strcmp(name, "bne") == 0) return INST_BNE;
     if (strcmp(name, "beq") == 0) return INST_BEQ;
     if (strcmp(name, "blt") == 0) return INST_BLT;
+    if (strcmp(name, ".word") == 0) return INST_WORD;
     return INST_EOP;
 }
 
@@ -47,19 +48,54 @@ static void parse_register(Operand* operand) {
         return;
     }
     operand->type = OP_REGISTER;
-    operand->value.reg_num = atoi(current_token->value + 1);  // Skip 'r'
+    operand->value.reg_num = current_token->value.reg_num;
     advance();
 }
 
 static void parse_immediate(Operand* operand) {
-    if (current_token->type != TOKEN_IMMEDIATE) {
-        parse_error("Expected immediate value");
-        return;
+    if (current_token->type == TOKEN_IMMEDIATE) {
+        operand->type = OP_IMMEDIATE;
+        operand->value.immediate = current_token->value.immediate;
+        advance();
+    } else if (current_token->type == TOKEN_LABEL_HI || 
+               current_token->type == TOKEN_LABEL_LO) {
+        TokenType modifier = current_token->type;
+        advance();  // Skip %hi or %lo
+        
+        if (current_token->type != TOKEN_LPAREN) {
+            parse_error("Expected '(' after %hi or %lo");
+            return;
+        }
+        advance();  // Skip '('
+        
+        if (current_token->type != TOKEN_LABEL_REFERENCE) {
+            parse_error("Expected label after '('");
+            return;
+        }
+        
+        // Get the label value from symbol table
+        uint16_t label_value = symbol_table_get(current_token->value.str);
+        if (label_value == 0xFFFF) {
+            parse_error("Undefined label");
+            return;
+        }
+        
+        operand->type = OP_IMMEDIATE;
+        if (modifier == TOKEN_LABEL_HI) {
+            operand->value.immediate = (label_value >> 8) & 0xFF;  // High 8 bits
+        } else {
+            operand->value.immediate = label_value & 0xFF;  // Low 8 bits
+        }
+        advance();  // Skip label
+        
+        if (current_token->type != TOKEN_RPAREN) {
+            parse_error("Expected ')' after label");
+            return;
+        }
+        advance();  // Skip ')'
+    } else {
+        parse_error("Expected immediate value or label modifier");
     }
-    operand->type = OP_IMMEDIATE;
-    operand->value.immediate = atoi(current_token->value);
-    printf("'%s' Immediate parsed: %d\n", current_token->value, operand->value.immediate);
-    advance();
 }
 
 static void parse_label(Operand* operand) {
@@ -68,7 +104,7 @@ static void parse_label(Operand* operand) {
         return;
     }
     operand->type = OP_LABEL;
-    operand->value.label = strdup(current_token->value);
+    operand->value.label = strdup(current_token->value.str);
     advance();
 }
 
@@ -78,7 +114,9 @@ static void parse_operands(Instruction* inst) {
     // Parse first operand
     if (current_token->type == TOKEN_REGISTER) {
         parse_register(&inst->operands[inst->operand_count++]);
-    } else if (current_token->type == TOKEN_IMMEDIATE) {
+    } else if (current_token->type == TOKEN_IMMEDIATE ||
+               current_token->type == TOKEN_LABEL_HI ||
+               current_token->type == TOKEN_LABEL_LO) {
         parse_immediate(&inst->operands[inst->operand_count++]);
     } else if (current_token->type == TOKEN_LABEL_REFERENCE) {
         parse_label(&inst->operands[inst->operand_count++]);
@@ -88,7 +126,9 @@ static void parse_operands(Instruction* inst) {
     while (match(TOKEN_COMMA) && inst->operand_count < 3) {
         if (current_token->type == TOKEN_REGISTER) {
             parse_register(&inst->operands[inst->operand_count++]);
-        } else if (current_token->type == TOKEN_IMMEDIATE) {
+        } else if (current_token->type == TOKEN_IMMEDIATE ||
+                   current_token->type == TOKEN_LABEL_HI ||
+                   current_token->type == TOKEN_LABEL_LO) {
             parse_immediate(&inst->operands[inst->operand_count++]);
         } else if (current_token->type == TOKEN_LABEL_REFERENCE) {
             parse_label(&inst->operands[inst->operand_count++]);
@@ -106,7 +146,7 @@ static void parse_instruction(void) {
     }
 
     Instruction* inst = &instructions[instruction_count++];
-    inst->type = get_instruction_type(current_token->value);
+    inst->type = current_token->value.inst_type;
     inst->line = current_token->line;
     advance();
 
@@ -120,7 +160,7 @@ static void parse_label_definition(void) {
     }
 
     // Add label to symbol table with current instruction count
-    symbol_table_add(current_token->value, instruction_count);
+    symbol_table_add(current_token->value.str, instruction_count);
     advance();
 }
 
@@ -131,7 +171,7 @@ static void parse_word_directive(void) {
     }
 
     Instruction* inst = &instructions[instruction_count++];
-    inst->type = INST_WORD;
+    inst->type = current_token->value.inst_type;
     inst->line = current_token->line;
     advance();
 
@@ -145,6 +185,45 @@ static void parse_word_directive(void) {
     } else {
         parse_error("Expected number or label after .word");
     }
+}
+
+static void parse_ascii_directive(void) {
+    if (current_token->type != TOKEN_ASCII_DIRECTIVE && 
+        current_token->type != TOKEN_ASCIZ_DIRECTIVE) {
+        parse_error("Expected .ascii or .asciz directive");
+        return;
+    }
+
+    bool is_asciz = (current_token->type == TOKEN_ASCIZ_DIRECTIVE);
+    advance();  // Skip directive
+
+    if (current_token->type != TOKEN_STRING_LITERAL) {
+        parse_error("Expected string literal after directive");
+        return;
+    }
+
+    // For each character in the string, create a .word instruction
+    const char* str = current_token->value.str;
+    for (int i = 0; str[i] != '\0'; i++) {
+        Instruction* inst = &instructions[instruction_count++];
+        inst->type = INST_WORD;
+        inst->line = current_token->line;
+        inst->operand_count = 1;
+        inst->operands[0].type = OP_IMMEDIATE;
+        inst->operands[0].value.immediate = (unsigned char)str[i];
+    }
+
+    // Add null terminator for .asciz
+    if (is_asciz) {
+        Instruction* inst = &instructions[instruction_count++];
+        inst->type = INST_WORD;
+        inst->line = current_token->line;
+        inst->operand_count = 1;
+        inst->operands[0].type = OP_IMMEDIATE;
+        inst->operands[0].value.immediate = 0;
+    }
+
+    advance();  // Skip string literal
 }
 
 Instruction* parser_parse(Token* tokens) {
@@ -161,6 +240,9 @@ Instruction* parser_parse(Token* tokens) {
             parse_instruction();
         } else if (current_token->type == TOKEN_WORD_DIRECTIVE) {
             parse_word_directive();
+        } else if (current_token->type == TOKEN_ASCII_DIRECTIVE || 
+                   current_token->type == TOKEN_ASCIZ_DIRECTIVE) {
+            parse_ascii_directive();
         } else {
             parse_error("Unexpected token");
             break;
